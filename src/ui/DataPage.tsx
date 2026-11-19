@@ -1,40 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { uniqueId } from '../model/profileEdit';
 import { wowBarsTemplate } from '../model/templates';
 import { fingerIdOf, type Profile } from '../model/types';
 import { formatIssue, type Issue } from '../model/yamlDoc';
 import {
   browserStore,
   chooseFolder,
-  detectStorage,
   disconnectFolder,
   reconnectFolder,
-  refreshBackup,
   repositoryFor,
-  type LoadResult,
   type ProfileEntry,
-  type Repository,
   type StorageState,
 } from '../storage';
 import { copyFiles, filesOnlyIn } from '../storage/fileStore';
 import { exportZip, importZip, type ImportResult } from '../storage/zip';
+import { useStorage } from './storageContext';
 
 type Notice = { kind: 'ok' | 'error'; text: string };
 
 export function DataPage() {
-  const [storage, setStorage] = useState<StorageState | null>(null);
-  const [data, setData] = useState<LoadResult | null>(null);
+  const { storage, setStorage, repo, data, reload, loadError } = useStorage();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const repoRef = useRef<Repository | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-
-  const reload = useCallback(async () => {
-    const repo = repoRef.current;
-    if (!repo) return;
-    const loaded = await repo.load();
-    setData(loaded);
-    await refreshBackup(repo);
-  }, []);
 
   /** Run an action, showing errors instead of failing silently. */
   const run = async (action: () => Promise<void>) => {
@@ -49,15 +37,6 @@ export function DataPage() {
     }
   };
 
-  useEffect(() => {
-    void run(async () => setStorage(await detectStorage()));
-  }, []);
-
-  useEffect(() => {
-    if (!storage) return;
-    repoRef.current = repositoryFor(storage);
-    void run(reload);
-  }, [storage, reload]);
 
   const onChooseFolder = () =>
     run(async () => {
@@ -89,11 +68,8 @@ export function DataPage() {
 
   const onAddExample = () =>
     run(async () => {
-      const repo = repoRef.current!;
-      const taken = new Set(data?.profiles.map((p) => p.fileId));
-      let id = 'wow-bars';
-      for (let n = 2; taken.has(id); n++) id = `wow-bars-${n}`;
-      await repo.saveProfile(wowBarsTemplate(id, id === 'wow-bars' ? undefined : `WoW action bars 1–4 (${id.slice(9)})`));
+      const id = uniqueId('wow-bars', data?.profiles.map((p) => p.fileId) ?? []);
+      await repo!.saveProfile(wowBarsTemplate(id, id === 'wow-bars' ? undefined : `WoW action bars 1–4 (${id.slice(9)})`));
       await reload();
       setNotice({ kind: 'ok', text: `Added profiles/${id}.yaml` });
     });
@@ -106,14 +82,14 @@ export function DataPage() {
         ? `Delete "${name}" and its ${n} session file(s)? This can't be undone.`
         : `Delete "${name}"? This can't be undone.`;
       if (!window.confirm(msg)) return;
-      await repoRef.current!.deleteProfile(entry.fileId, true);
+      await repo!.deleteProfile(entry.fileId, true);
       await reload();
       setNotice({ kind: 'ok', text: `Deleted ${entry.path}` });
     });
 
   const onExport = () =>
     run(async () => {
-      const zip = await exportZip(repoRef.current!.store);
+      const zip = await exportZip(repo!.store);
       const url = URL.createObjectURL(new Blob([zip as BlobPart], { type: 'application/zip' }));
       const a = document.createElement('a');
       a.href = url;
@@ -125,13 +101,13 @@ export function DataPage() {
   const onImportFile = (file: File) =>
     run(async () => {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      const repo = repoRef.current!;
-      let result = await importZip(bytes, repo, false);
+      const target = repo!;
+      let result = await importZip(bytes, target, false);
       if (
         result.conflicts.length &&
         window.confirm(`${result.conflicts.length} file(s) already exist with different contents:\n\n${result.conflicts.join('\n')}\n\nReplace them?`)
       ) {
-        const second = await importZip(bytes, repo, true);
+        const second = await importZip(bytes, target, true);
         result = { ...second, imported: [...result.imported, ...second.imported], conflicts: [] };
       }
       await reload();
@@ -175,12 +151,16 @@ export function DataPage() {
       </section>
 
       {notice && <p className={`notice ${notice.kind}`}>{notice.text}</p>}
+      {loadError && <p className="notice error">Could not read the files: {loadError}</p>}
 
       <section className="card">
         <div className="card-title">
           <h2>Profiles</h2>
           <div className="row-actions">
-            <button onClick={onAddExample} disabled={busy || !data}>
+            <a className="button" href="#/profile/new">
+              New profile
+            </a>
+            <button className="secondary" onClick={onAddExample} disabled={busy || !data}>
               Add WoW bars example
             </button>
           </div>
@@ -290,9 +270,21 @@ function ProfileRow({ entry, onDelete, busy }: { entry: ProfileEntry; onDelete: 
           </div>
         ))}
       </div>
-      <button className="secondary danger" onClick={onDelete} disabled={busy}>
-        Delete
-      </button>
+      <div className="row-actions compact">
+        {profile && (
+          <>
+            <a className="button" href={`#/profile/${encodeURIComponent(entry.fileId)}`}>
+              Edit
+            </a>
+            <a className="button secondary" href={`#/profile/new?from=${encodeURIComponent(entry.fileId)}`}>
+              Copy
+            </a>
+          </>
+        )}
+        <button className="secondary danger" onClick={onDelete} disabled={busy}>
+          Delete
+        </button>
+      </div>
     </div>
   );
 }

@@ -87,6 +87,8 @@ const MODIFIER_SHORT: Record<Modifier, string> = {
 
 /** Human label for a single code: Digit1 → "1", KeyQ → "Q", ControlLeft → "LCtrl". */
 export function codeLabel(code: string): string {
+  // Generic modifiers ("Control") match either side.
+  if ((MODIFIERS as readonly string[]).includes(code)) return MODIFIER_SHORT[code as Modifier];
   const m = modifierOf(code);
   if (m) return (sideOf(code) === 'left' ? 'L' : 'R') + MODIFIER_SHORT[m];
   if (/^Digit\d$/.test(code)) return code.slice(5);
@@ -114,7 +116,7 @@ export function codeLabel(code: string): string {
 export function comboLabel(codes: Iterable<string>): string {
   const list = [...codes];
   const order = (c: string) => {
-    const m = modifierOf(c);
+    const m = modifierOf(c) ?? ((MODIFIERS as readonly string[]).includes(c) ? (c as Modifier) : undefined);
     return m ? MODIFIERS.indexOf(m) : MODIFIERS.length;
   };
   list.sort((a, b) => order(a) - order(b) || a.localeCompare(b));

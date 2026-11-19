@@ -71,3 +71,10 @@ describe('digitSlot', () => {
     expect(digitSlot('KeyQ', ['KeyQ'], noFlags)).toBeNull();
   });
 });
+
+describe('generic modifiers in labels', () => {
+  it('labels and orders generic modifiers like specific ones', () => {
+    expect(codeLabel('Control')).toBe('Ctrl');
+    expect(comboLabel(['Digit2', 'Shift'])).toBe('Shift + 2');
+  });
+});

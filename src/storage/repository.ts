@@ -1,7 +1,8 @@
 // Reads and writes profiles and sessions as YAML files in a FileStore.
 // Layout: profiles/<id>.yaml and sessions/<profile id>/<start time>.yaml
 
-import { parseProfile, serializeProfile } from '../model/profile';
+import { parseProfile } from '../model/profile';
+import { updateProfileText } from '../model/profileEdit';
 import { parseSession, serializeSession, sessionFileStem } from '../model/session';
 import type { Profile, Session } from '../model/types';
 import type { Issue } from '../model/yamlDoc';
@@ -80,9 +81,13 @@ export class Repository {
     return this.store.read(profilePath(id));
   }
 
-  /** Save a profile. If its id changed, the file and session folder are renamed. */
+  /**
+   * Save a profile, keeping comments and formatting of the existing file where
+   * possible. If its id changed, the file and session folder are renamed.
+   */
   async saveProfile(profile: Profile, previousId?: string): Promise<void> {
-    await this.writeFile(profilePath(profile.id), serializeProfile(profile));
+    const current = await this.store.read(profilePath(previousId ?? profile.id));
+    await this.writeFile(profilePath(profile.id), updateProfileText(current, profile));
     if (previousId && previousId !== profile.id) {
       for (const path of await this.store.list(sessionDir(previousId))) {
         const text = await this.store.read(path);

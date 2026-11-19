@@ -1,36 +1,63 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DataPage } from './DataPage';
 import { InputTestPage } from './InputTestPage';
+import { mayLeave, parseHash } from './nav';
+import { ProfileEditor } from './ProfileEditor';
+import { StorageProvider } from './storageContext';
 
-const ROUTES = [
-  { hash: '#/data', label: 'Data', render: () => <DataPage /> },
-  { hash: '#/input-test', label: 'Input test', render: () => <InputTestPage /> },
+const NAV = [
+  { hash: '#/data', label: 'Data', section: 'data' },
+  { hash: '#/input-test', label: 'Input test', section: 'input-test' },
 ];
 
-function currentRoute() {
-  return ROUTES.find((r) => r.hash === window.location.hash) ?? ROUTES[0];
+function renderRoute(hash: string) {
+  const { parts, query } = parseHash(hash);
+  if (parts[0] === 'input-test') return { section: 'input-test', element: <InputTestPage /> };
+  if (parts[0] === 'profile' && parts[1]) {
+    const element =
+      parts[1] === 'new' ? (
+        <ProfileEditor copyFrom={query.get('from') ?? undefined} />
+      ) : (
+        <ProfileEditor editId={parts[1]} />
+      );
+    return { section: 'data', element };
+  }
+  return { section: 'data', element: <DataPage /> };
 }
 
 export function App() {
-  const [route, setRoute] = useState(currentRoute);
+  const [hash, setHash] = useState(() => window.location.hash || '#/data');
+  const current = useRef(hash);
 
   useEffect(() => {
-    const onHash = () => setRoute(currentRoute());
+    const onHash = () => {
+      const next = window.location.hash || '#/data';
+      if (next === current.current) return;
+      if (!mayLeave()) {
+        // Put the old address back without triggering another check.
+        window.history.replaceState(null, '', current.current);
+        return;
+      }
+      current.current = next;
+      setHash(next);
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
+  const route = renderRoute(hash);
   return (
-    <>
+    <StorageProvider>
       <nav className="topbar">
         <span className="brand">keybind.trainer</span>
-        {ROUTES.map((r) => (
-          <a key={r.hash} href={r.hash} className={`nav-link ${r === route ? 'active' : ''}`}>
+        {NAV.map((r) => (
+          <a key={r.hash} href={r.hash} className={`nav-link ${r.section === route.section ? 'active' : ''}`}>
             {r.label}
           </a>
         ))}
       </nav>
-      {route.render()}
-    </>
+      {/* Keyed by address so each page starts fresh when navigated to. */}
+      <div key={hash}>{route.element}</div>
+    </StorageProvider>
   );
 }

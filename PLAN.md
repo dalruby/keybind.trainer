@@ -5,7 +5,7 @@ each key assigned to a specific finger of a specific hand, and get detailed
 per-finger diagnostics. Built first for an Azeron Cyborg 2 with WoW action bars,
 but not tied to it.
 
-Status: milestones 1 (input test) and 2 (model + storage) done.
+Status: milestones 1 (input test), 2 (model + storage) and 3 (profile editor) done.
 
 ---
 
@@ -83,7 +83,7 @@ Findings that shaped the input rules in section 4:
 - **Browser backup**: every write also goes to this browser's IndexedDB, and loading from the folder refreshes that copy. The backup never deletes files on its own, so picking an empty or different folder can't wipe it. When a folder is chosen and the browser holds files the folder doesn't, the app offers to copy them in.
 - **No folder** (other browsers, or none chosen yet): data lives only in the browser store.
 - **Export / import**: a zip with the same `profiles/` and `sessions/` layout. Imported files are validated first; existing files with different content are only replaced after confirmation.
-- Known limitation: when the app itself saves a profile, it rewrites the file, so comments added by hand are lost. Keeping them is planned with the profile editor (milestone 3).
+- Saving from the app edits the existing file in place, so hand-written comments and formatting of unchanged parts survive. Comments attached to a binding move with it; comments on removed bindings go with them.
 
 ### Profile
 ```yaml
@@ -195,11 +195,13 @@ tests/          Vitest specs for model, session, stats
 
 1. **Scaffold + input test page** ✅: Vite/React/TS setup and GitHub Pages deploy. The page shows the raw key events with `code`, modifiers and timestamps, and has the browser-shortcut checks from section 1. Verified on Windows with the Cyborg 2.
 2. **Model + storage** ✅: YAML schema, validation, fingerprints, folder picker, browser-storage mirror, import/export. Unit tests. Data page lists profiles and shows validation errors.
-3. **Profile editor**:
-   - Create and copy profiles.
-   - Add a binding by pressing the keys.
-   - Assign hand and finger to each key.
-   - A "WoW bars 1–4" template that generates 0–9 plain plus Ctrl, Shift and Alt.
+3. **Profile editor** ✅:
+   - Create, copy and edit profiles (name, id, device, default hand); renaming the id moves its sessions.
+   - Add bindings by pressing them ("Record bindings"); duplicates and overlapping combos are refused.
+   - Hand + finger per key in each binding, plus a "Fingers per key" table that sets a key's finger in every binding at once.
+   - Modifiers can be "this side only" (`ControlLeft`) or "either side" (`Control`).
+   - Reorder, relabel and remove bindings; warns when an edit restarts a binding's statistics.
+   - "Fill with WoW bars 1–4" for an empty profile.
 4. **Training session**: setup screen, prompt display, matcher, timing, misclick capture, pause, and saving the session file.
 5. **Diagnostics**: the views from section 5.
 6. **Weak-spot mode**: weighted scheduling and "train these".
