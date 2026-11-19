@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { DataPage } from './DataPage';
-import { DiagnosticsPage } from './DiagnosticsPage';
 import { InputTestPage } from './InputTestPage';
 import { mayLeave, parseHash } from './nav';
 import { ProfileEditor } from './ProfileEditor';
 import { StorageProvider } from './storageContext';
 import { TrainPage } from './TrainPage';
+
+// Charts are heavy; load them only when the Diagnostics page is opened.
+const DiagnosticsPage = lazy(() => import('./DiagnosticsPage').then((m) => ({ default: m.DiagnosticsPage })));
 
 const NAV = [
   { hash: '#/train', label: 'Train', section: 'train' },
@@ -63,7 +65,9 @@ export function App() {
         ))}
       </nav>
       {/* Keyed by address so each page starts fresh when navigated to. */}
-      <div key={hash}>{route.element}</div>
+      <div key={hash}>
+        <Suspense fallback={<main className="page"><p className="muted">Loading…</p></main>}>{route.element}</Suspense>
+      </div>
     </StorageProvider>
   );
 }
