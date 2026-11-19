@@ -441,3 +441,38 @@ main:focus { outline: none; }
 .form-grid { align-items: start; }
 .check-row { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 14px; }
 .check-row label.checkbox { align-self: auto; }
+
+/* --- home page ------------------------------------------------------------- */
+.topbar { align-items: center; }
+.brand { display: inline-flex; padding: 2px; border-radius: 8px; margin-right: 4px; }
+.brand img { display: block; }
+.brand:hover { background: var(--neutral-bg); }
+
+.home { gap: 20px; }
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 32px;
+  align-items: center;
+  padding: 24px 0 8px;
+}
+.home-hero h1 { font-size: 2.1rem; line-height: 1.2; max-width: 22ch; }
+.home-lead { font-size: 1.1rem; margin-top: 12px; max-width: 52ch; }
+.home-hero .row-actions { margin-top: 18px; }
+a.button.big-link { padding: 9px 20px; }
+.home-example { display: grid; justify-items: center; gap: 10px; }
+.home-example .keycap { min-width: 92px; padding: 14px 16px 10px; }
+.home-example .keycap .cap { font-size: 2.2rem; }
+.home-example .feedback { animation: none; margin: 0; }
+.home-steps ol { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 10px; max-width: 70ch; }
+.home-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.home-grid p { margin-top: 6px; }
+.home-foot { text-align: center; }
+@media (max-width: 720px) {
+  .home-hero { grid-template-columns: 1fr; }
+  .home-hero h1 { font-size: 1.7rem; }
+}
+.nav-link { white-space: nowrap; }
+@media (max-width: 600px) {
+  .topbar { padding: 10px 16px; gap: 10px; overflow-x: auto; }
+}
