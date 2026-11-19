@@ -189,7 +189,7 @@ export function InputTestPage() {
   };
 
   return (
-    <main className="page">
+    <main tabIndex={-1} className="page">
       <header className="page-header">
         <div>
           <h1>Input test</h1>

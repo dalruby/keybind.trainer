@@ -99,10 +99,10 @@ export function ProfileEditor({ editId, copyFrom }: Props) {
     return map;
   }, [saved]);
 
-  if (!data) return <main className="page"><p className="muted">Loading…</p></main>;
+  if (!data) return <main tabIndex={-1} className="page"><p className="muted">Loading…</p></main>;
   if (!isNew && !entry?.profile) {
     return (
-      <main className="page">
+      <main tabIndex={-1} className="page">
         <p className="notice error">
           {entry ? `profiles/${editId}.yaml has errors; fix them in the file first (see the Data page).` : `There is no profile "${editId}".`}
         </p>
@@ -112,7 +112,7 @@ export function ProfileEditor({ editId, copyFrom }: Props) {
       </main>
     );
   }
-  if (!draft) return <main className="page"><p className="muted">Loading…</p></main>;
+  if (!draft) return <main tabIndex={-1} className="page"><p className="muted">Loading…</p></main>;
 
   const update = (fn: (p: Profile) => Profile) => {
     setNotice(null);
@@ -172,7 +172,7 @@ export function ProfileEditor({ editId, copyFrom }: Props) {
     : [];
 
   return (
-    <main className="page">
+    <main tabIndex={-1} className="page">
       <header className="page-header">
         <div>
           <p className="muted small">

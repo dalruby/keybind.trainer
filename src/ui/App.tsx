@@ -59,6 +59,9 @@ export function App() {
   const route = renderRoute(hash);
   return (
     <StorageProvider>
+      <a className="skip-link" href="#main-content" onClick={(e) => { e.preventDefault(); document.querySelector<HTMLElement>('main')?.focus(); }}>
+        Skip to content
+      </a>
       <nav className="topbar">
         <span className="brand">keybind.trainer</span>
         {NAV.map((r) => (
@@ -69,7 +72,7 @@ export function App() {
       </nav>
       {/* Keyed by address so each page starts fresh when navigated to. */}
       <div key={hash}>
-        <Suspense fallback={<main className="page"><p className="muted">Loading…</p></main>}>{route.element}</Suspense>
+        <Suspense fallback={<main tabIndex={-1} className="page"><p className="muted">Loading…</p></main>}>{route.element}</Suspense>
       </div>
     </StorageProvider>
   );

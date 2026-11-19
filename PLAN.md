@@ -5,7 +5,7 @@ each key assigned to a specific finger of a specific hand, and get detailed
 per-finger diagnostics. Built first for an Azeron Cyborg 2 with WoW action bars,
 but not tied to it.
 
-Status: milestones 1–6 done (input test, model + storage, profile editor, training session, diagnostics, weak-spot mode).
+Status: all seven milestones done. Next: try it with the Azeron Cyborg 2 once it arrives (re-run the input test first).
 
 ---
 
@@ -161,6 +161,7 @@ attempts:                    # one compact line per attempt
   - Normal mode: uniform.
   - Weak-spot mode: each binding's cost (median ms + misclick rate × 1000) over the last 10 sessions, relative to the typical binding, squared and clamped: weight = (cost / median cost)², between 0.25 and 4. A binding twice as costly comes up about four times as often; the fastest still get a quarter of an even share. Bindings with fewer than 3 timed attempts get 1.5 so they collect data. Weights are recomputed at every start, so they follow your progress.
 - **Session length**: presets of 2, 5, 10 and 20 minutes, or a custom length. It can be paused, and pauses aren't counted.
+- **Pausing by keyboard**: Esc pauses unless a binding uses Esc; while paused nothing is judged, so Enter or Space resumes. Leaving fullscreen (when training in fullscreen) or switching windows also pauses.
 - The first few attempts can be marked as warm-up and excluded from statistics. This is off by default.
 
 ---
@@ -218,4 +219,9 @@ tests/          Vitest specs for model, session, stats
    - Train page: "All, evenly" or "Focus on weak spots", with a preview of the most frequent bindings and their share of prompts.
    - Diagnostics: "Train these N" under Weak spots starts a session limited to those bindings (still weighted among them).
    - Recorded as `mode: weak-spot`, so the Diagnostics mode filter can separate these sessions.
-7. **Polish**: optional fullscreen and Keyboard Lock mode, keyboard-only navigation, dark mode.
+7. **Polish** ✅:
+   - Optional "Train in fullscreen" with Keyboard Lock; leaving fullscreen pauses, ending the session leaves fullscreen.
+   - Keyboard control: Esc pauses, Enter/Space resumes, Enter on the summary starts the next session; visible focus outlines and a skip link.
+   - Dark mode follows the system setting (charts use their own validated dark steps).
+   - Layout: train setup in clear rows, length presets and custom field on one line, binding key chips on one line.
+   - README with how to use the app.

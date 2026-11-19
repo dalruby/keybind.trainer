@@ -117,7 +117,7 @@ export function DataPage() {
   const location = storage?.kind === 'folder' ? `folder "${storage.handle.name}"` : 'this browser';
 
   return (
-    <main className="page">
+    <main tabIndex={-1} className="page">
       <header className="page-header">
         <div>
           <h1>Data</h1>

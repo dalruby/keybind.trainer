@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { KeyboardCapture } from '../input/capture';
+import { KeyboardCapture, enterLockedFullscreen, exitLockedFullscreen, keyboardLockSupported } from '../input/capture';
 import { codeLabel, comboLabel } from '../input/keys';
 import { PROMPT_STYLES, handOf, type Binding, type Profile, type PromptStyle, type Session, type SessionMode } from '../model/types';
 import { SessionEngine } from '../session/engine';
@@ -16,6 +16,8 @@ interface Settings {
   warmup: number;
   /** all = uniform random; weak = weighted toward weak spots. */
   focus: 'all' | 'weak';
+  /** Train in fullscreen with Keyboard Lock (Chrome/Edge). */
+  fullscreen: boolean;
 }
 
 /** What a run trains: which bindings, how they're weighted, and the recorded mode. */
@@ -26,7 +28,7 @@ interface RunPlan {
 }
 
 const PRESETS = [2, 5, 10, 20];
-const DEFAULTS: Settings = { minutes: 5, prompt: 'keys', showFingers: true, gapMs: 250, warmup: 0, focus: 'all' };
+const DEFAULTS: Settings = { minutes: 5, prompt: 'keys', showFingers: true, gapMs: 250, warmup: 0, focus: 'all', fullscreen: false };
 const SETTINGS_KEY = 'keybind-trainer.train-settings';
 
 function loadSettings(): Settings {
@@ -85,6 +87,8 @@ export function TrainPage({ profileId, only }: { profileId?: string; only?: stri
 
   const start = (p: Profile, s: Settings, plan: RunPlan) => {
     storeSettings(s);
+    // Must happen inside the click that starts the session.
+    if (s.fullscreen && !document.fullscreenElement) enterLockedFullscreen().catch(() => undefined);
     setPhase({ kind: 'running', profile: p, settings: s, plan, run: Date.now() });
   };
 
@@ -124,11 +128,11 @@ export function TrainPage({ profileId, only }: { profileId?: string; only?: stri
     );
   }
 
-  if (!data) return <main className="page"><p className="muted">Loading…</p></main>;
+  if (!data) return <main tabIndex={-1} className="page"><p className="muted">Loading…</p></main>;
 
   const minutesValid = settings.minutes > 0 && settings.minutes <= 120;
   return (
-    <main className="page">
+    <main tabIndex={-1} className="page">
       <header className="page-header">
         <div>
           <h1>Train</h1>
@@ -155,7 +159,7 @@ export function TrainPage({ profileId, only }: { profileId?: string; only?: stri
                 ))}
               </select>
             </label>
-            <div className="field">
+            <div className="field wide">
               <span>Length (minutes)</span>
               <div className="segmented">
                 {PRESETS.map((m) => (
@@ -179,7 +183,7 @@ export function TrainPage({ profileId, only }: { profileId?: string; only?: stri
                 />
               </div>
             </div>
-            <div className="field">
+            <div className="field wide">
               <span>What to train</span>
               {onlyValid?.length ? (
                 <div className="only-box">
@@ -209,6 +213,8 @@ export function TrainPage({ profileId, only }: { profileId?: string; only?: stri
                 ))}
               </select>
             </label>
+          </div>
+          <div className="check-row">
             <label className="checkbox">
               <input
                 type="checkbox"
@@ -217,6 +223,19 @@ export function TrainPage({ profileId, only }: { profileId?: string; only?: stri
               />
               <span>Show which finger presses each key</span>
             </label>
+            {document.fullscreenEnabled && (
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={settings.fullscreen}
+                  onChange={(e) => setSettings((s) => ({ ...s, fullscreen: e.target.checked }))}
+                />
+                <span>
+                  Train in fullscreen
+                  {keyboardLockSupported() ? ' (all keys reach the trainer; hold Esc to leave)' : ''}
+                </span>
+              </label>
+            )}
           </div>
           <details className="advanced">
             <summary>More settings</summary>
@@ -363,17 +382,43 @@ function Runner({ profile, settings, plan, onEnd }: { profile: Profile; settings
     setPaused(true);
   }, [engine]);
 
-  const resume = () => {
+  const resume = useCallback(() => {
+    if (engine.state !== 'paused') return;
     engine.resume(performance.now());
     setPaused(false);
     nextTimer.current = window.setTimeout(showNext, 600);
-  };
+  }, [engine, showNext]);
+
+  // Esc pauses, unless a binding uses Esc itself.
+  const escPauses = useMemo(() => !engine.bindings.some((b) => b.keys.some((k) => k.code === 'Escape')), [engine]);
+
+  // Leaving fullscreen mid-session pauses; leave fullscreen when the session ends.
+  useEffect(() => {
+    if (!settings.fullscreen) return;
+    const onFs = () => {
+      if (!document.fullscreenElement) pause();
+    };
+    document.addEventListener('fullscreenchange', onFs);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFs);
+      void exitLockedFullscreen().catch(() => undefined);
+    };
+  }, [settings.fullscreen, pause]);
 
   // Keyboard capture for the whole run.
   useEffect(() => {
     const capture = new KeyboardCapture();
     capture.onKey((ev) => {
-      if (ev.type !== 'down') return;
+      if (ev.type !== 'down' || ev.repeat) return;
+      if (engine.state === 'paused') {
+        // Nothing is judged while paused, so these keys are free to resume.
+        if (ev.code === 'Enter' || ev.code === 'Space' || ev.code === 'NumpadEnter') resume();
+        return;
+      }
+      if (escPauses && ev.code === 'Escape') {
+        pause();
+        return;
+      }
       const out = engine.handleKeyDown(ev);
       if (out.kind === 'miss') {
         setCounts((c) => ({ ...c, misses: c.misses + 1 }));
@@ -392,7 +437,7 @@ function Runner({ profile, settings, plan, onEnd }: { profile: Profile; settings
       capture.stop();
       window.clearTimeout(nextTimer.current);
     };
-  }, [engine, showNext, pause]);
+  }, [engine, showNext, pause, resume, escPauses]);
 
   // Clock.
   useEffect(() => {
@@ -424,7 +469,7 @@ function Runner({ profile, settings, plan, onEnd }: { profile: Profile; settings
 
   const total = settings.minutes * 60 * 1000;
   return (
-    <main className="trainer">
+    <main tabIndex={-1} className="trainer">
       <div className="trainer-top">
         <div className="muted small">
           {profile.name}{plan.mode === 'weak-spot' ? ' · weak spots' : ''} · {counts.done} done · {counts.misses} misses
@@ -446,6 +491,7 @@ function Runner({ profile, settings, plan, onEnd }: { profile: Profile; settings
             <h2>Paused</h2>
             <p className="muted">The clock stopped. The prompt you were on is not counted.</p>
             <button className="big" onClick={resume}>Resume</button>
+            <p className="muted small">or press Enter or Space</p>
           </div>
         ) : prompt ? (
           <PromptCard key={`prompt-${prompt.n}`} binding={prompt.binding} profile={profile} settings={settings} />
@@ -456,7 +502,9 @@ function Runner({ profile, settings, plan, onEnd }: { profile: Profile; settings
           {feedback && (feedback.kind === 'miss' ? `✕ ${feedback.text}` : `✓ ${feedback.text}`)}
         </div>
       </div>
-      <p className="muted small center">Keys are captured while training. Use the buttons, or switch windows, to pause.</p>
+      <p className="muted small center">
+        Keys are captured while training. {escPauses ? 'Press Esc to pause' : 'Use the Pause button'}, or switch windows.
+      </p>
     </main>
   );
 }
@@ -517,7 +565,7 @@ function Summary({
   const accuracy = total.attempts ? 1 - total.attemptsWithMiss / total.attempts : NaN;
 
   return (
-    <main className="page">
+    <main tabIndex={-1} className="page">
       <header className="page-header">
         <div>
           <h1>Session done</h1>
@@ -529,7 +577,9 @@ function Summary({
         <div className="row-actions">
           <a className="button secondary" href={`#/stats/${encodeURIComponent(profile.id)}`}>Diagnostics</a>
           <button className="secondary" onClick={onSetup}>Change settings</button>
-          <button onClick={onAgain}>Train again</button>
+          <button onClick={onAgain} autoFocus>
+            Train again
+          </button>
         </div>
       </header>
 

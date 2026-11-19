@@ -410,3 +410,34 @@ tr.clickable:hover td { background: var(--neutral-bg); }
 button.small-button { padding: 3px 10px; font-size: 0.85rem; }
 .weight-preview { margin-top: 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; }
 .weight-preview ul { margin-top: 4px; }
+
+/* --- polish: keyboard focus and layout ------------------------------------------ */
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.nav-link:focus-visible { border-radius: 4px; }
+@media (min-width: 720px) {
+  .form-grid .field.wide { grid-column: span 2; }
+}
+.segmented .minutes-input { margin-left: 4px; }
+.key-list { flex-wrap: nowrap; }
+.bindings td:first-child { white-space: nowrap; }
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  background: var(--accent);
+  color: var(--accent-text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  z-index: 10;
+}
+.skip-link:focus { left: 8px; }
+main:focus { outline: none; }
+.form-grid { align-items: start; }
+.check-row { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 14px; }
+.check-row label.checkbox { align-self: auto; }

@@ -74,10 +74,10 @@ export function DiagnosticsPage({ profileId }: { profileId?: string }) {
     if (fingers.length && (!finger || !fingers.some((f) => f.finger === finger))) setFinger(fingers[0].finger);
   }, [fingers, finger]);
 
-  if (!data) return <main className="page"><p className="muted">Loading…</p></main>;
+  if (!data) return <main tabIndex={-1} className="page"><p className="muted">Loading…</p></main>;
   if (!entries.length || !profile || !set) {
     return (
-      <main className="page">
+      <main tabIndex={-1} className="page">
         <h1>Diagnostics</h1>
         <p className="muted">No profiles yet. <a href="#/data">Add one on the Data page.</a></p>
       </main>
@@ -90,7 +90,7 @@ export function DiagnosticsPage({ profileId }: { profileId?: string }) {
   const detailStats = perBinding.find((b) => b.id === detail);
 
   return (
-    <main className="page">
+    <main tabIndex={-1} className="page">
       <header className="page-header">
         <div>
           <h1>Diagnostics</h1>
