@@ -273,7 +273,10 @@ function ProfileRow({ entry, onDelete, busy }: { entry: ProfileEntry; onDelete: 
       <div className="row-actions compact">
         {profile && (
           <>
-            <a className="button" href={`#/profile/${encodeURIComponent(entry.fileId)}`}>
+            <a className="button" href={`#/train/${encodeURIComponent(entry.fileId)}`}>
+              Train
+            </a>
+            <a className="button secondary" href={`#/profile/${encodeURIComponent(entry.fileId)}`}>
               Edit
             </a>
             <a className="button secondary" href={`#/profile/new?from=${encodeURIComponent(entry.fileId)}`}>

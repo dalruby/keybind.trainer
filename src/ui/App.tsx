@@ -4,8 +4,10 @@ import { InputTestPage } from './InputTestPage';
 import { mayLeave, parseHash } from './nav';
 import { ProfileEditor } from './ProfileEditor';
 import { StorageProvider } from './storageContext';
+import { TrainPage } from './TrainPage';
 
 const NAV = [
+  { hash: '#/train', label: 'Train', section: 'train' },
   { hash: '#/data', label: 'Data', section: 'data' },
   { hash: '#/input-test', label: 'Input test', section: 'input-test' },
 ];
@@ -13,6 +15,7 @@ const NAV = [
 function renderRoute(hash: string) {
   const { parts, query } = parseHash(hash);
   if (parts[0] === 'input-test') return { section: 'input-test', element: <InputTestPage /> };
+  if (parts[0] === 'train') return { section: 'train', element: <TrainPage profileId={parts[1]} /> };
   if (parts[0] === 'profile' && parts[1]) {
     const element =
       parts[1] === 'new' ? (

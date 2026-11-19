@@ -1,6 +1,6 @@
 import { Document, isMap, isSeq } from 'yaml';
 import { ID_PATTERN, TO_STRING, isRecord, parseYaml, type Checker, type Parsed } from './yamlDoc';
-import { SCHEMA_VERSION, type Attempt, type BindingSnapshot, type Miss, type Session, type SessionMode } from './types';
+import { PROMPT_STYLES, SCHEMA_VERSION, type Attempt, type BindingSnapshot, type Miss, type PromptStyle, type Session, type SessionMode } from './types';
 
 const MODES: SessionMode[] = ['normal', 'weak-spot'];
 
@@ -29,6 +29,9 @@ function readSession(v: unknown, c: Checker): Session | null {
   if (!isNum(v.durationPlanned) || v.durationPlanned <= 0) c.add(['durationPlanned'], 'durationPlanned must be a positive number of seconds');
   if (!isNum(v.durationActual) || v.durationActual < 0) c.add(['durationActual'], 'durationActual must be a number of seconds');
   if (v.bounces !== undefined && (!isNum(v.bounces) || v.bounces < 0)) c.add(['bounces'], 'bounces must be a number');
+  if (v.prompt !== undefined && !PROMPT_STYLES.includes(v.prompt as PromptStyle)) c.add(['prompt'], `prompt must be one of: ${PROMPT_STYLES.join(', ')}`);
+  if (v.gapMs !== undefined && (!isNum(v.gapMs) || v.gapMs < 0)) c.add(['gapMs'], 'gapMs must be a number of ms');
+  if (v.warmup !== undefined && (!Number.isInteger(v.warmup) || (v.warmup as number) < 0)) c.add(['warmup'], 'warmup must be a whole number');
 
   const bindings: Record<string, BindingSnapshot> = {};
   if (!isRecord(v.bindings)) {
@@ -85,6 +88,9 @@ function readSession(v: unknown, c: Checker): Session | null {
     bindings,
     attempts,
   };
+  if (v.prompt !== undefined) session.prompt = v.prompt as PromptStyle;
+  if (isNum(v.gapMs)) session.gapMs = v.gapMs;
+  if (isNum(v.warmup)) session.warmup = v.warmup;
   if (isNum(v.bounces)) session.bounces = v.bounces;
   return session;
 }
@@ -101,6 +107,9 @@ export function serializeSession(s: Session): string {
     durationPlanned: s.durationPlanned,
     durationActual: round(s.durationActual, 1),
   };
+  if (s.prompt !== undefined) obj.prompt = s.prompt;
+  if (s.gapMs !== undefined) obj.gapMs = s.gapMs;
+  if (s.warmup !== undefined) obj.warmup = s.warmup;
   if (s.bounces !== undefined) obj.bounces = s.bounces;
   obj.bindings = s.bindings;
   obj.attempts = s.attempts.map((a) => {

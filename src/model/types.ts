@@ -41,6 +41,10 @@ export interface Profile {
 
 export type SessionMode = 'normal' | 'weak-spot';
 
+/** What the prompt shows: the keys to press, the binding's label, or both. */
+export type PromptStyle = 'keys' | 'label' | 'both';
+export const PROMPT_STYLES: PromptStyle[] = ['keys', 'label', 'both'];
+
 /** Snapshot of a binding as it was trained, stored in the session file. */
 export interface BindingSnapshot {
   /** Fingerprint of keys + hands + fingers; see fingerprint.ts. */
@@ -76,6 +80,12 @@ export interface Session {
   durationPlanned: number;
   /** Seconds, excluding pauses. */
   durationActual: number;
+  /** What the prompt showed. */
+  prompt?: PromptStyle;
+  /** Pause between a correct input and the next prompt, in ms. */
+  gapMs?: number;
+  /** Number of leading attempts to leave out of statistics. */
+  warmup?: number;
   /** Key bounces dropped by the debouncer during the session. */
   bounces?: number;
   bindings: Record<string, BindingSnapshot>;

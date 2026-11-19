@@ -5,7 +5,7 @@ each key assigned to a specific finger of a specific hand, and get detailed
 per-finger diagnostics. Built first for an Azeron Cyborg 2 with WoW action bars,
 but not tied to it.
 
-Status: milestones 1 (input test), 2 (model + storage) and 3 (profile editor) done.
+Status: milestones 1–4 done (input test, model + storage, profile editor, training session).
 
 ---
 
@@ -124,6 +124,10 @@ mode: normal                 # normal | weak-spot
 startedAt: 2026-11-19T20:15:03.120Z
 durationPlanned: 300         # seconds
 durationActual: 300.4
+prompt: keys                 # keys | label | both
+gapMs: 250
+warmup: 0                    # leading attempts left out of statistics
+bounces: 0
 bindings:                    # snapshot of what was trained, so the profile can change later
   bar1-1: { fp: 3f9a1c, keys: [left.index:Digit1] }
   bar2-1: { fp: 81be04, keys: [left.pinky:ControlLeft, left.index:Digit1] }
@@ -202,7 +206,12 @@ tests/          Vitest specs for model, session, stats
    - Modifiers can be "this side only" (`ControlLeft`) or "either side" (`Control`).
    - Reorder, relabel and remove bindings; warns when an edit restarts a binding's statistics.
    - "Fill with WoW bars 1–4" for an empty profile.
-4. **Training session**: setup screen, prompt display, matcher, timing, misclick capture, pause, and saving the session file.
+4. **Training session** ✅:
+   - Setup: profile, length (2/5/10/20 min or custom), prompt shows keys / label / both, finger hints on or off, gap between prompts, warm-up attempts. Remembered in this browser.
+   - 3-2-1 countdown, then random prompts with no immediate repeats; keycaps show the finger for each key.
+   - Live feedback (reaction time or the wrong keys pressed), clock and progress bar.
+   - Pause with the button or by switching windows; the interrupted prompt is dropped. End early (saves) or discard.
+   - Saves the session YAML, then shows a summary: attempts, median time, share of clean attempts, misclicks, and each binding slowest first.
 5. **Diagnostics**: the views from section 5.
 6. **Weak-spot mode**: weighted scheduling and "train these".
 7. **Polish**: optional fullscreen and Keyboard Lock mode, keyboard-only navigation, dark mode.

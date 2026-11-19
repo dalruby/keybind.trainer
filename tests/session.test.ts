@@ -10,6 +10,9 @@ const session: Session = {
   startedAt: '2026-11-19T20:15:03.120Z',
   durationPlanned: 300,
   durationActual: 300.42,
+  prompt: 'both',
+  gapMs: 250,
+  warmup: 3,
   bounces: 1,
   bindings: {
     'bar1-1': { fp: '3f9a1c00', keys: ['left.index:Digit1'] },
