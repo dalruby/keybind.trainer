@@ -5,7 +5,7 @@ each key assigned to a specific finger of a specific hand, and get detailed
 per-finger diagnostics. Built first for an Azeron Cyborg 2 with WoW action bars,
 but not tied to it.
 
-Status: milestones 1–5 done (input test, model + storage, profile editor, training session, diagnostics).
+Status: milestones 1–6 done (input test, model + storage, profile editor, training session, diagnostics, weak-spot mode).
 
 ---
 
@@ -159,7 +159,7 @@ attempts:                    # one compact line per attempt
 - After a correct input, the next prompt appears after a short configurable gap (default 250 ms). Keys still held from the previous binding are ignored until they're released.
 - **Order**: random, with no binding twice in a row.
   - Normal mode: uniform.
-  - Weak-spot mode: weighted by a score that combines median time and miss rate per binding over recent sessions, with a minimum weight so strong bindings still appear.
+  - Weak-spot mode: each binding's cost (median ms + misclick rate × 1000) over the last 10 sessions, relative to the typical binding, squared and clamped: weight = (cost / median cost)², between 0.25 and 4. A binding twice as costly comes up about four times as often; the fastest still get a quarter of an even share. Bindings with fewer than 3 timed attempts get 1.5 so they collect data. Weights are recomputed at every start, so they follow your progress.
 - **Session length**: presets of 2, 5, 10 and 20 minutes, or a custom length. It can be paused, and pauses aren't counted.
 - The first few attempts can be marked as warm-up and excluded from statistics. This is off by default.
 
@@ -214,5 +214,8 @@ tests/          Vitest specs for model, session, stats
    - Pause with the button or by switching windows; the interrupted prompt is dropped. End early (saves) or discard.
    - Saves the session YAML, then shows a summary: attempts, median time, share of clean attempts, misclicks, and each binding slowest first.
 5. **Diagnostics** ✅: the views in section 5, on the Diagnostics page (also linked from the session summary and the Data page).
-6. **Weak-spot mode**: weighted scheduling and "train these".
+6. **Weak-spot mode** ✅:
+   - Train page: "All, evenly" or "Focus on weak spots", with a preview of the most frequent bindings and their share of prompts.
+   - Diagnostics: "Train these N" under Weak spots starts a session limited to those bindings (still weighted among them).
+   - Recorded as `mode: weak-spot`, so the Diagnostics mode filter can separate these sessions.
 7. **Polish**: optional fullscreen and Keyboard Lock mode, keyboard-only navigation, dark mode.

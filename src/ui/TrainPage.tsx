@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardCapture } from '../input/capture';
 import { codeLabel, comboLabel } from '../input/keys';
-import { PROMPT_STYLES, handOf, type Binding, type Profile, type PromptStyle, type Session } from '../model/types';
+import { PROMPT_STYLES, handOf, type Binding, type Profile, type PromptStyle, type Session, type SessionMode } from '../model/types';
 import { SessionEngine } from '../session/engine';
 import { summarizeSession } from '../stats/basic';
+import { weakSpotWeights } from '../stats/weights';
 import { setNavGuard } from './nav';
 import { useStorage } from './storageContext';
 
@@ -13,10 +14,19 @@ interface Settings {
   showFingers: boolean;
   gapMs: number;
   warmup: number;
+  /** all = uniform random; weak = weighted toward weak spots. */
+  focus: 'all' | 'weak';
+}
+
+/** What a run trains: which bindings, how they're weighted, and the recorded mode. */
+interface RunPlan {
+  mode: SessionMode;
+  bindingIds?: string[];
+  weights?: Map<string, number>;
 }
 
 const PRESETS = [2, 5, 10, 20];
-const DEFAULTS: Settings = { minutes: 5, prompt: 'keys', showFingers: true, gapMs: 250, warmup: 0 };
+const DEFAULTS: Settings = { minutes: 5, prompt: 'keys', showFingers: true, gapMs: 250, warmup: 0, focus: 'all' };
 const SETTINGS_KEY = 'keybind-trainer.train-settings';
 
 function loadSettings(): Settings {
@@ -36,35 +46,56 @@ function storeSettings(s: Settings) {
 
 type Phase =
   | { kind: 'setup' }
-  | { kind: 'running'; profile: Profile; settings: Settings; run: number }
-  | { kind: 'done'; profile: Profile; settings: Settings; session: Session; path?: string; error?: string };
+  | { kind: 'running'; profile: Profile; settings: Settings; plan: RunPlan; run: number }
+  | { kind: 'done'; profile: Profile; settings: Settings; plan: RunPlan; session: Session; path?: string; error?: string };
 
-export function TrainPage({ profileId }: { profileId?: string }) {
+export function TrainPage({ profileId, only }: { profileId?: string; only?: string[] }) {
   const { data, repo, reload } = useStorage();
   const profiles = useMemo(() => data?.profiles.flatMap((p) => (p.profile ? [p.profile] : [])) ?? [], [data]);
   const [selected, setSelected] = useState<string | undefined>(profileId);
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [phase, setPhase] = useState<Phase>({ kind: 'setup' });
+  /** Bindings chosen elsewhere (e.g. "Train these" in Diagnostics). */
+  const [onlyIds, setOnlyIds] = useState<string[] | undefined>(only?.length ? only : undefined);
 
   useEffect(() => {
     if (!selected && profiles.length) setSelected(profiles[0].id);
   }, [profiles, selected]);
 
   const profile = profiles.find((p) => p.id === selected);
+  const sessions = useMemo(
+    () => data?.profiles.find((p) => p.fileId === selected)?.sessions.flatMap((s) => (s.session ? [s.session] : [])) ?? [],
+    [data, selected],
+  );
+  // Only ids that still exist in the profile.
+  const onlyValid = useMemo(
+    () => (onlyIds && profile ? onlyIds.filter((id) => profile.bindings.some((b) => b.id === id)) : undefined),
+    [onlyIds, profile],
+  );
+  const weighted = settings.focus === 'weak' || !!onlyValid?.length;
+  const weightInfo = useMemo(
+    () => (profile && weighted ? weakSpotWeights(profile, sessions, onlyValid) : null),
+    [profile, sessions, onlyValid, weighted],
+  );
 
-  const start = (p: Profile, s: Settings) => {
+  const planFor = (): RunPlan =>
+    onlyValid?.length || settings.focus === 'weak'
+      ? { mode: 'weak-spot', bindingIds: onlyValid?.length ? onlyValid : undefined, weights: weightInfo?.weights }
+      : { mode: 'normal' };
+
+  const start = (p: Profile, s: Settings, plan: RunPlan) => {
     storeSettings(s);
-    setPhase({ kind: 'running', profile: p, settings: s, run: Date.now() });
+    setPhase({ kind: 'running', profile: p, settings: s, plan, run: Date.now() });
   };
 
   const save = useCallback(
-    async (p: Profile, s: Settings, session: Session) => {
+    async (p: Profile, s: Settings, plan: RunPlan, session: Session) => {
       try {
         const path = await repo!.saveSession(session);
         await reload();
-        setPhase({ kind: 'done', profile: p, settings: s, session, path });
+        setPhase({ kind: 'done', profile: p, settings: s, plan, session, path });
       } catch (e) {
-        setPhase({ kind: 'done', profile: p, settings: s, session, error: e instanceof Error ? e.message : String(e) });
+        setPhase({ kind: 'done', profile: p, settings: s, plan, session, error: e instanceof Error ? e.message : String(e) });
       }
     },
     [repo, reload],
@@ -76,7 +107,8 @@ export function TrainPage({ profileId }: { profileId?: string }) {
         key={phase.run}
         profile={phase.profile}
         settings={phase.settings}
-        onEnd={(session) => (session ? void save(phase.profile, phase.settings, session) : setPhase({ kind: 'setup' }))}
+        plan={phase.plan}
+        onEnd={(session) => (session ? void save(phase.profile, phase.settings, phase.plan, session) : setPhase({ kind: 'setup' }))}
       />
     );
   }
@@ -85,9 +117,9 @@ export function TrainPage({ profileId }: { profileId?: string }) {
     return (
       <Summary
         phase={phase}
-        onAgain={() => start(phase.profile, phase.settings)}
+        onAgain={() => start(phase.profile, phase.settings, phase.plan)}
         onSetup={() => setPhase({ kind: 'setup' })}
-        onRetrySave={() => void save(phase.profile, phase.settings, phase.session)}
+        onRetrySave={() => void save(phase.profile, phase.settings, phase.plan, phase.session)}
       />
     );
   }
@@ -115,7 +147,7 @@ export function TrainPage({ profileId }: { profileId?: string }) {
           <div className="form-grid">
             <label>
               <span>Profile</span>
-              <select value={selected} onChange={(e) => setSelected(e.target.value)}>
+              <select value={selected} onChange={(e) => { setSelected(e.target.value); setOnlyIds(undefined); }}>
                 {profiles.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} ({p.bindings.length} bindings)
@@ -146,6 +178,26 @@ export function TrainPage({ profileId }: { profileId?: string }) {
                   className="minutes-input"
                 />
               </div>
+            </div>
+            <div className="field">
+              <span>What to train</span>
+              {onlyValid?.length ? (
+                <div className="only-box">
+                  <span>
+                    <strong>{onlyValid.length} chosen bindings</strong>, weighted toward the weakest
+                  </span>
+                  <button className="secondary small-button" onClick={() => setOnlyIds(undefined)}>Train all instead</button>
+                </div>
+              ) : (
+                <div className="segmented">
+                  <button className={settings.focus === 'all' ? '' : 'secondary'} onClick={() => setSettings((s) => ({ ...s, focus: 'all' }))}>
+                    All, evenly
+                  </button>
+                  <button className={settings.focus === 'weak' ? '' : 'secondary'} onClick={() => setSettings((s) => ({ ...s, focus: 'weak' }))}>
+                    Focus on weak spots
+                  </button>
+                </div>
+              )}
             </div>
             <label>
               <span>Prompt shows</span>
@@ -192,8 +244,9 @@ export function TrainPage({ profileId }: { profileId?: string }) {
               </label>
             </div>
           </details>
+          {weighted && weightInfo && profile && <WeightPreview profile={profile} info={weightInfo} />}
           <div className="row-actions">
-            <button className="big" disabled={!profile || !minutesValid} onClick={() => profile && start(profile, settings)}>
+            <button className="big" disabled={!profile || !minutesValid} onClick={() => profile && start(profile, settings, planFor())}>
               Start
             </button>
             {!minutesValid && <span className="bad-text">Choose a length between 0.5 and 120 minutes.</span>}
@@ -208,16 +261,51 @@ export function TrainPage({ profileId }: { profileId?: string }) {
 
 type Feedback = { kind: 'miss' | 'correct'; text: string; n: number } | null;
 
-function Runner({ profile, settings, onEnd }: { profile: Profile; settings: Settings; onEnd: (s: Session | null) => void }) {
+function WeightPreview({ profile, info }: { profile: Profile; info: ReturnType<typeof weakSpotWeights> }) {
+  if (info.measured === 0) {
+    return (
+      <p className="notice warn">
+        No results yet to find weak spots, so bindings come up evenly. After a session or two this starts favouring the
+        slow and error-prone ones.
+      </p>
+    );
+  }
+  const top = [...info.share].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const even = 1 / info.share.size;
+  const byId = new Map(profile.bindings.map((b) => [b.id, b]));
+  return (
+    <div className="weight-preview">
+      <p className="muted small">
+        Based on your last sessions. Most frequent (an even share would be {Math.round(even * 100)}%):
+      </p>
+      <ul className="plain-list">
+        {top.map(([id, share]) => {
+          const b = byId.get(id);
+          return (
+            <li key={id}>
+              <strong>{Math.round(share * 100)}%</strong> {b?.label ?? id}{' '}
+              <span className="muted">({b ? comboLabel(b.keys.map((k) => k.code)) : ''})</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function Runner({ profile, settings, plan, onEnd }: { profile: Profile; settings: Settings; plan: RunPlan; onEnd: (s: Session | null) => void }) {
   const engine = useMemo(
     () =>
       new SessionEngine(profile, {
+        mode: plan.mode,
+        bindingIds: plan.bindingIds,
+        weights: plan.weights,
         durationSec: Math.round(settings.minutes * 60),
         prompt: settings.prompt,
         gapMs: settings.gapMs,
         warmup: settings.warmup,
       }),
-    [profile, settings],
+    [profile, settings, plan],
   );
   const [countdown, setCountdown] = useState(3);
   const [paused, setPaused] = useState(false);
@@ -339,7 +427,7 @@ function Runner({ profile, settings, onEnd }: { profile: Profile; settings: Sett
     <main className="trainer">
       <div className="trainer-top">
         <div className="muted small">
-          {profile.name} · {counts.done} done · {counts.misses} misses
+          {profile.name}{plan.mode === 'weak-spot' ? ' · weak spots' : ''} · {counts.done} done · {counts.misses} misses
         </div>
         <div className="clock" aria-label="Time remaining">{formatClock(remaining)}</div>
         <div className="row-actions compact">
@@ -434,7 +522,7 @@ function Summary({
         <div>
           <h1>Session done</h1>
           <p className="muted">
-            {profile.name} · {(session.durationActual / 60).toFixed(1)} min
+            {profile.name}{session.mode === 'weak-spot' ? ' · weak spots' : ''} · {(session.durationActual / 60).toFixed(1)} min
             {session.warmup ? ` · first ${session.warmup} attempts left out as warm-up` : ''}
           </p>
         </div>

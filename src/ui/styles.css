@@ -404,3 +404,9 @@ tr.clickable:hover td { background: var(--neutral-bg); }
 }
 .heat-cell button.no-data { background: var(--neutral-bg); color: var(--muted); }
 .heat-cell button:hover, .heat-cell button:focus-visible { outline: 2px solid var(--text); outline-offset: 0; }
+
+/* --- weak-spot training --------------------------------------------------- */
+.only-box { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+button.small-button { padding: 3px 10px; font-size: 0.85rem; }
+.weight-preview { margin-top: 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; }
+.weight-preview ul { margin-top: 4px; }

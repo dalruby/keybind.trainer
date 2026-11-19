@@ -207,7 +207,7 @@ export function DiagnosticsPage({ profileId }: { profileId?: string }) {
             }
           />
 
-          <WeakSpots list={weakSpots(perBinding)} onSelect={selectDetail} />
+          <WeakSpots list={weakSpots(perBinding)} onSelect={selectDetail} profileId={profile.id} />
 
           <TrendCard theme={theme} set={set} profile={profile} measure={measure} fingers={fingers.map((f) => f.finger)} />
 
@@ -446,10 +446,17 @@ function KeyGridChart({ theme, set, measure, onSelect }: { theme: ChartTheme; se
   );
 }
 
-function WeakSpots({ list, onSelect }: { list: BindingStats[]; onSelect: (id: string) => void }) {
+function WeakSpots({ list, onSelect, profileId }: { list: BindingStats[]; onSelect: (id: string) => void; profileId: string }) {
   return (
     <section className="card">
-      <h2>Weak spots</h2>
+      <div className="card-title">
+        <h2>Weak spots</h2>
+        {list.length > 0 && (
+          <a className="button" href={`#/train/${encodeURIComponent(profileId)}?only=${list.map((b) => encodeURIComponent(b.id)).join(',')}`}>
+            Train these {list.length}
+          </a>
+        )}
+      </div>
       <p className="muted small">
         Ranked by median time plus the misclick rate × {MISS_PENALTY_MS / 1000} s, so slow and error-prone bindings both rise.
         Bindings need {MIN_TIMED} timed attempts to be ranked.

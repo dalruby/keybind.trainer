@@ -20,7 +20,10 @@ function renderRoute(hash: string) {
   const { parts, query } = parseHash(hash);
   if (parts[0] === 'input-test') return { section: 'input-test', element: <InputTestPage /> };
   if (parts[0] === 'stats') return { section: 'stats', element: <DiagnosticsPage profileId={parts[1]} /> };
-  if (parts[0] === 'train') return { section: 'train', element: <TrainPage profileId={parts[1]} /> };
+  if (parts[0] === 'train') {
+    const only = query.get('only')?.split(',').filter(Boolean);
+    return { section: 'train', element: <TrainPage profileId={parts[1]} only={only} /> };
+  }
   if (parts[0] === 'profile' && parts[1]) {
     const element =
       parts[1] === 'new' ? (
