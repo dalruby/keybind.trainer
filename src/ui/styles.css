@@ -167,3 +167,35 @@ th { text-align: left; font-weight: 600; color: var(--muted); font-size: 0.85rem
 .log .num { text-align: right; font-variant-numeric: tabular-nums; }
 .log .empty { text-align: center; padding: 24px; }
 .altgr { margin-left: 8px; }
+
+.nav-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 600;
+  padding: 2px 4px;
+  border-bottom: 2px solid transparent;
+}
+.nav-link:hover { color: var(--text); }
+.nav-link.active { color: var(--text); border-bottom-color: var(--accent); }
+
+button:disabled { opacity: 0.5; cursor: default; }
+button.danger { color: var(--bad-text); border-color: var(--bad-text); }
+
+.notice { margin: 0; padding: 10px 14px; border-radius: 8px; }
+.notice.ok { background: var(--ok-bg); color: var(--ok-text); }
+.notice.error { background: var(--bad-bg); color: var(--bad-text); }
+
+.profile-list { display: grid; margin-top: 8px; }
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.profile-row:last-child { border-bottom: 0; }
+.profile-row.invalid strong { color: var(--bad-text); }
+.profile-main { display: grid; gap: 2px; min-width: 0; }
+.profile-main code { word-break: break-all; }
+.issues { margin: 4px 0 0; padding-left: 18px; color: var(--bad-text); font-size: 0.85rem; }

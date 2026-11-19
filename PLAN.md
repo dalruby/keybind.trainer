@@ -5,7 +5,7 @@ each key assigned to a specific finger of a specific hand, and get detailed
 per-finger diagnostics. Built first for an Azeron Cyborg 2 with WoW action bars,
 but not tied to it.
 
-Status: **planning** — nothing is built yet.
+Status: milestones 1 (input test) and 2 (model + storage) done.
 
 ---
 
@@ -17,7 +17,7 @@ Status: **planning** — nothing is built yet.
 | Language / UI | TypeScript, React, Vite |
 | Charts | ECharts |
 | Storage | YAML files in a folder the user picks (File System Access API), plus a browser-storage mirror as backup; import/export as fallback |
-| YAML library | `js-yaml` |
+| YAML library | `yaml` (keeps comments and gives line numbers for validation errors) |
 | Tests | Vitest for timing, matching, scoring and statistics logic |
 | Keyboard layout | US-International on Windows (Right Alt = AltGr); keys are stored as physical key codes (`KeyboardEvent.code`) |
 | Hosting | GitHub Pages from `dalruby/keybind.trainer` (optional; also runs locally) |
@@ -31,16 +31,16 @@ Chromium fullscreen Keyboard Lock API covers them, and a Tauri wrapper is the
 last resort. All keyboard input goes through one module (`src/input/`) so that
 swap stays contained.
 
-### Verified on Windows (milestone 1, Edge 157 + Azeron Cyborg 2)
+### Verified on Windows (milestone 1, Edge 157; ZSA Voyager and NuPhy Air96 V2, Azeron not yet available)
 1. `Ctrl+1`…`Ctrl+9` stay on the tab: `preventDefault()` stops tab switching. ✅
 2. Tapping `Alt` alone keeps focus. ✅
 3. All 40 WoW bar combinations (0–9 × none/Ctrl/Shift/Alt) reach the page; timestamps have 0.1 ms resolution. ✅
 
-So training works in a normal tab; fullscreen + Keyboard Lock stays an option, not a requirement.
+So training works in a normal tab; fullscreen + Keyboard Lock stays an option, not a requirement. Re-run the input test page once the Azeron arrives.
 
 Findings that shaped the input rules in section 4:
 - The Windows layout is US-International, so Right Alt is **AltGr**: Windows sends a fake `ControlLeft` with it, and the browser reports Ctrl and Alt as *up* while AltGr is down. Right Alt is not usable as a regular Alt on this layout (switching Windows to the plain "US" layout would change that).
-- The Azeron produced a **switch bounce**: a key released and pressed again 0.3 ms later.
+- One of the test keyboards produced a **switch bounce**: a key released and pressed again 0.3 ms later.
 
 ---
 
@@ -75,7 +75,15 @@ Findings that shaped the input rules in section 4:
 ```
 - One file per profile and one file per session.
 - File names come from the profile `id` and the session start time.
-- Files can be edited by hand; the app re-reads them on load and reports any validation error with its file name and line.
+- Files can be edited by hand; the app re-reads them on load ("Reload files") and reports any validation error with its file name and line.
+- A profile's `id` must match its file name, and a session's `profile` must match its folder.
+
+### Where files live
+- **Folder** (Chrome/Edge): the user picks a folder once; the browser remembers it but asks for permission again after a restart (one click on "Reconnect folder"). The folder is the source of truth.
+- **Browser backup**: every write also goes to this browser's IndexedDB, and loading from the folder refreshes that copy. The backup never deletes files on its own, so picking an empty or different folder can't wipe it. When a folder is chosen and the browser holds files the folder doesn't, the app offers to copy them in.
+- **No folder** (other browsers, or none chosen yet): data lives only in the browser store.
+- **Export / import**: a zip with the same `profiles/` and `sessions/` layout. Imported files are validated first; existing files with different content are only replaced after confirmation.
+- Known limitation: when the app itself saves a profile, it rewrites the file, so comments added by hand are lost. Keeping them is planned with the profile editor (milestone 3).
 
 ### Profile
 ```yaml
@@ -185,8 +193,8 @@ tests/          Vitest specs for model, session, stats
 
 ## 7. Milestones
 
-1. **Scaffold + input test page**: Vite/React/TS setup and GitHub Pages deploy. The page shows the raw key events with `code`, modifiers and timestamps, and has the browser-shortcut checks from section 1. Verified on Windows with the Cyborg 2.
-2. **Model + storage**: YAML schema, validation, fingerprints, folder picker, browser-storage mirror, import/export. Unit tests.
+1. **Scaffold + input test page** ✅: Vite/React/TS setup and GitHub Pages deploy. The page shows the raw key events with `code`, modifiers and timestamps, and has the browser-shortcut checks from section 1. Verified on Windows with the Cyborg 2.
+2. **Model + storage** ✅: YAML schema, validation, fingerprints, folder picker, browser-storage mirror, import/export. Unit tests. Data page lists profiles and shows validation errors.
 3. **Profile editor**:
    - Create and copy profiles.
    - Add a binding by pressing the keys.

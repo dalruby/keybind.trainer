@@ -250,7 +250,7 @@ export function InputTestPage() {
           <h2>WoW bar coverage</h2>
           <span className="muted">{coveredCount} / 40 combinations seen</span>
         </div>
-        <p className="muted small">Press each slot on the Azeron. A cell lights up when the page receives exactly that combination.</p>
+        <p className="muted small">Press each combination on your keyboard. A cell lights up when the page receives exactly that combination.</p>
         <div className="grid-scroll">
           <table className="coverage">
             <thead>

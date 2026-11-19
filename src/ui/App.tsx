@@ -1,15 +1,36 @@
+import { useEffect, useState } from 'react';
+import { DataPage } from './DataPage';
 import { InputTestPage } from './InputTestPage';
 
-// Milestone 1: the app is just the input test page. Routing comes with the
-// profile editor in milestone 3.
+const ROUTES = [
+  { hash: '#/data', label: 'Data', render: () => <DataPage /> },
+  { hash: '#/input-test', label: 'Input test', render: () => <InputTestPage /> },
+];
+
+function currentRoute() {
+  return ROUTES.find((r) => r.hash === window.location.hash) ?? ROUTES[0];
+}
+
 export function App() {
+  const [route, setRoute] = useState(currentRoute);
+
+  useEffect(() => {
+    const onHash = () => setRoute(currentRoute());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
   return (
     <>
       <nav className="topbar">
         <span className="brand">keybind.trainer</span>
-        <span className="muted small">milestone 1 · input test</span>
+        {ROUTES.map((r) => (
+          <a key={r.hash} href={r.hash} className={`nav-link ${r === route ? 'active' : ''}`}>
+            {r.label}
+          </a>
+        ))}
       </nav>
-      <InputTestPage />
+      {route.render()}
     </>
   );
 }

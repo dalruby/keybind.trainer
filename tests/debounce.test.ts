@@ -10,7 +10,7 @@ function run(events: Ev[]): Ev[] {
 }
 
 describe('Debouncer', () => {
-  it('drops a release bounce (sequence seen on the Azeron Digit4)', () => {
+  it('drops a release bounce (sequence seen on Digit4 during the Windows test)', () => {
     const events: Ev[] = [
       ['down', 'Digit4', 95955.9],
       ['up', 'Digit4', 96001.6],
