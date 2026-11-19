@@ -439,6 +439,7 @@ function Summary({
           </p>
         </div>
         <div className="row-actions">
+          <a className="button secondary" href={`#/stats/${encodeURIComponent(profile.id)}`}>Diagnostics</a>
           <button className="secondary" onClick={onSetup}>Change settings</button>
           <button onClick={onAgain}>Train again</button>
         </div>
@@ -462,7 +463,9 @@ function Summary({
 
       <section className="card">
         <h2>Per binding, slowest first</h2>
-        <p className="muted small">Full per-finger diagnostics come with the next milestone.</p>
+        <p className="muted small">
+          This session only. <a href={`#/stats/${encodeURIComponent(profile.id)}`}>Diagnostics</a> shows every finger across all sessions.
+        </p>
         <div className="table-scroll">
           <table className="summary">
             <thead>

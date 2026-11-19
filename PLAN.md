@@ -5,7 +5,7 @@ each key assigned to a specific finger of a specific hand, and get detailed
 per-finger diagnostics. Built first for an Azeron Cyborg 2 with WoW action bars,
 but not tied to it.
 
-Status: milestones 1–4 done (input test, model + storage, profile editor, training session).
+Status: milestones 1–5 done (input test, model + storage, profile editor, training session, diagnostics).
 
 ---
 
@@ -167,16 +167,17 @@ attempts:                    # one compact line per attempt
 
 ## 5. Diagnostics
 
-Shown per session, and across all sessions of a profile with filters for date range and mode:
+One filter row scopes the whole page: profile, sessions (all / last 10 / last 5 / last), mode, and measure (median time, slow end = 90th percentile, misclick rate). Only attempts whose binding still has the same keys and fingers count; the page says how many were left out.
 
-- **Per finger** (hand + finger): every binding that finger is involved in, ranked best to worst by median time, 90th-percentile time and miss rate.
-- **Heatmap**: finger × key, colour by median time, with a toggle for miss rate.
-- **Per binding**: time distribution, miss rate, and which wrong inputs it gets confused with.
-- **Plain vs modifier**: the same digit with and without Ctrl/Shift/Alt, to show what the pinky costs.
-- **Trends**: median time and miss rate per binding and per finger across sessions.
-- **Weak spots**: the bottom N bindings, with a "Train these" button that starts a weak-spot session limited to them.
+- **Overview**: sessions, attempts, median, p90, share of clean attempts.
+- **By finger** (hand + finger): one bar per finger, over every binding it takes part in.
+- **Per finger, best to worst**: that finger's bindings ranked, with its role (presses the key, or holds a modifier). Bindings need 3 timed attempts to be ranked.
+- **Key grid** (heatmap): trigger keys (with the finger that presses them) × modifiers (none, Ctrl, Shift, Alt), so plain vs. modifier and finger × key are in one view.
+- **Weak spots**: the bottom 8, ranked by median time + misclick rate × 1 s.
+- **Over time**: one point per session, for all bindings, one finger, or one binding.
+- **Binding detail**: reaction-time histogram, stats, and which wrong inputs were pressed instead.
 
-The app shows data only and makes no rebinding recommendations.
+Every chart has a Table toggle showing the same values. Charts use one validated blue (light and dark steps) and a one-hue sequential scale for the grid. The app shows data only and makes no rebinding recommendations.
 
 ---
 
@@ -212,6 +213,6 @@ tests/          Vitest specs for model, session, stats
    - Live feedback (reaction time or the wrong keys pressed), clock and progress bar.
    - Pause with the button or by switching windows; the interrupted prompt is dropped. End early (saves) or discard.
    - Saves the session YAML, then shows a summary: attempts, median time, share of clean attempts, misclicks, and each binding slowest first.
-5. **Diagnostics**: the views from section 5.
+5. **Diagnostics** ✅: the views in section 5, on the Diagnostics page (also linked from the session summary and the Data page).
 6. **Weak-spot mode**: weighted scheduling and "train these".
 7. **Polish**: optional fullscreen and Keyboard Lock mode, keyboard-only navigation, dark mode.

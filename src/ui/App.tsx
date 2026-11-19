@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { DataPage } from './DataPage';
+import { DiagnosticsPage } from './DiagnosticsPage';
 import { InputTestPage } from './InputTestPage';
 import { mayLeave, parseHash } from './nav';
 import { ProfileEditor } from './ProfileEditor';
@@ -8,6 +9,7 @@ import { TrainPage } from './TrainPage';
 
 const NAV = [
   { hash: '#/train', label: 'Train', section: 'train' },
+  { hash: '#/stats', label: 'Diagnostics', section: 'stats' },
   { hash: '#/data', label: 'Data', section: 'data' },
   { hash: '#/input-test', label: 'Input test', section: 'input-test' },
 ];
@@ -15,6 +17,7 @@ const NAV = [
 function renderRoute(hash: string) {
   const { parts, query } = parseHash(hash);
   if (parts[0] === 'input-test') return { section: 'input-test', element: <InputTestPage /> };
+  if (parts[0] === 'stats') return { section: 'stats', element: <DiagnosticsPage profileId={parts[1]} /> };
   if (parts[0] === 'train') return { section: 'train', element: <TrainPage profileId={parts[1]} /> };
   if (parts[0] === 'profile' && parts[1]) {
     const element =

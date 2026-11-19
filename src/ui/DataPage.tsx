@@ -276,6 +276,9 @@ function ProfileRow({ entry, onDelete, busy }: { entry: ProfileEntry; onDelete: 
             <a className="button" href={`#/train/${encodeURIComponent(entry.fileId)}`}>
               Train
             </a>
+            <a className="button secondary" href={`#/stats/${encodeURIComponent(entry.fileId)}`}>
+              Diagnostics
+            </a>
             <a className="button secondary" href={`#/profile/${encodeURIComponent(entry.fileId)}`}>
               Edit
             </a>
