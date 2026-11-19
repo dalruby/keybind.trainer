@@ -50,6 +50,8 @@ export function InputTestPage() {
   const [locked, setLocked] = useState(false);
   const [lockError, setLockError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [bounces, setBounces] = useState<{ code: string; type: 'down' | 'up'; t: number }[]>([]);
+  const [altGr, setAltGr] = useState(false);
 
   const idRef = useRef(0);
   const lastDownRef = useRef<number | null>(null);
@@ -74,6 +76,7 @@ export function InputTestPage() {
     }
     setLog((l) => [row, ...l].slice(0, LOG_LIMIT));
     setHeld(ev.held);
+    setAltGr(ev.flags.altGraph);
 
     const now = performance.now();
     if (ev.type === 'down' && !ev.repeat && /^Digit[1-9]$/.test(ev.code) && ev.flags.ctrl) {
@@ -100,9 +103,11 @@ export function InputTestPage() {
   useEffect(() => {
     const capture = new KeyboardCapture();
     const offKey = capture.onKey(handleKey);
+    const offBounce = capture.onBounce((code, type, t) => setBounces((b) => [...b, { code, type, t }]));
     const offReset = capture.onReset(() => {
       const now = performance.now();
       setHeld([]);
+      setAltGr(false);
       altRef.current = initialAltTap;
       setCtrlCheck((c) => focusLost(c, now));
       setAltCheck((c) => focusLost(c, now));
@@ -135,6 +140,7 @@ export function InputTestPage() {
     return () => {
       offKey();
       offReset();
+      offBounce();
       capture.stop();
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('blur', onBlur);
@@ -163,6 +169,7 @@ export function InputTestPage() {
     setLog([]);
     setCoverage({});
     setMinDelta(null);
+    setBounces([]);
     setCtrlCheck(newCheck());
     setAltCheck(newCheck());
     lastDownRef.current = null;
@@ -171,7 +178,7 @@ export function InputTestPage() {
   const coveredCount = Object.keys(coverage).length;
 
   const copyReport = async () => {
-    const report = buildReport({ ctrlCheck, altCheck, coverage, minDelta, log });
+    const report = buildReport({ ctrlCheck, altCheck, coverage, minDelta, log, bounces });
     try {
       await navigator.clipboard.writeText(report);
       setCopied(true);
@@ -215,6 +222,16 @@ export function InputTestPage() {
               <span className="muted">Press keys quickly. Shows the smallest gap seen between two keydowns.</span>
             </div>
             <span className="badge neutral">{minDelta === null ? '—' : `${minDelta.toFixed(3)} ms`}</span>
+          </div>
+          <div className="check">
+            <div className="check-main">
+              <strong>Key bounce ignored</strong>
+              <span className="muted">
+                A key released and pressed again within 10 ms counts once.
+                {bounces.length > 0 && ` Last: ${codeLabel(bounces[bounces.length - 1].code)}.`}
+              </span>
+            </div>
+            <span className={`badge ${bounces.length ? 'bad' : 'neutral'}`}>{bounces.length}</span>
           </div>
         </div>
         <div className="row-actions">
@@ -276,6 +293,7 @@ export function InputTestPage() {
         </div>
         <p className="held">
           <span className="muted">Held:</span> {held.length ? comboLabel(held) : <span className="muted">nothing</span>}
+          {altGr && <span className="badge neutral altgr">AltGr</span>}
         </p>
         <div className="log-scroll">
           <table className="log">
@@ -309,7 +327,10 @@ export function InputTestPage() {
                   <td>
                     <code>{JSON.stringify(r.key)}</code>
                   </td>
-                  <td>{r.held.length ? comboLabel(r.held) : '—'}</td>
+                  <td>
+                    {r.held.length ? comboLabel(r.held) : '—'}
+                    {r.flags.altGraph && <span className="muted"> (AltGr)</span>}
+                  </td>
                   <td className="num">{r.delta !== undefined ? r.delta.toFixed(1) : ''}</td>
                   <td className="num">{r.holdMs !== undefined ? r.holdMs.toFixed(1) : ''}</td>
                   <td className="num">{r.timeStamp.toFixed(2)}</td>
@@ -362,6 +383,7 @@ function buildReport(args: {
   coverage: Coverage;
   minDelta: number | null;
   log: LogRow[];
+  bounces: { code: string; type: 'down' | 'up'; t: number }[];
 }): string {
   const missing: string[] = [];
   for (const row of BAR_ROWS) {
@@ -376,6 +398,8 @@ function buildReport(args: {
     `ctrlDigitCheck: { status: ${args.ctrlCheck.status}, pass: ${args.ctrlCheck.passes}, fail: ${args.ctrlCheck.failures} }`,
     `altTapCheck: { status: ${args.altCheck.status}, pass: ${args.altCheck.passes}, fail: ${args.altCheck.failures} }`,
     `minKeydownGapMs: ${args.minDelta === null ? 'null' : args.minDelta.toFixed(3)}`,
+    `bouncesIgnored: ${args.bounces.length}`,
+    ...args.bounces.slice(-10).map((b) => `  - { type: ${b.type}, code: ${b.code}, t: ${b.t.toFixed(2)} }`),
     `coverage: ${40 - missing.length}/40`,
     `missing: [${missing.join(', ')}]`,
     `recentEvents:`,
@@ -384,7 +408,7 @@ function buildReport(args: {
       .reverse()
       .map(
         (r) =>
-          `  - { type: ${r.type}, code: ${r.code}, key: ${JSON.stringify(r.key)}, repeat: ${r.repeat}, held: [${r.held.join(', ')}], t: ${r.timeStamp.toFixed(2)} }`,
+          `  - { type: ${r.type}, code: ${r.code}, key: ${JSON.stringify(r.key)}, repeat: ${r.repeat}, held: [${r.held.join(', ')}],${r.flags.altGraph ? ' altGr: true,' : ''} t: ${r.timeStamp.toFixed(2)} }`,
       ),
   ];
   return lines.join('\n');

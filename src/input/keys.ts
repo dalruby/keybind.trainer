@@ -45,7 +45,16 @@ export interface ModifierFlags {
   shift: boolean;
   alt: boolean;
   meta: boolean;
+  /**
+   * AltGr is down. On layouts like US-International, Windows turns Right Alt
+   * into AltGr and also sends a fake ControlLeft press. While AltGr is down
+   * the browser reports ctrl and alt as *up*, even though both keys are held.
+   */
+  altGraph: boolean;
 }
+
+/** Physical keys that make up AltGr on Windows. */
+const ALTGR_CODES = new Set(['AltRight', 'ControlLeft']);
 
 const FLAG_FOR: Record<Modifier, keyof ModifierFlags> = {
   Control: 'ctrl',
@@ -63,7 +72,7 @@ export function reconcileHeld(held: ReadonlySet<string>, flags: ModifierFlags): 
   const out = new Set<string>();
   for (const code of held) {
     const m = modifierOf(code);
-    if (m && !flags[FLAG_FOR[m]]) continue;
+    if (m && !flags[FLAG_FOR[m]] && !(flags.altGraph && ALTGR_CODES.has(code))) continue;
     out.add(code);
   }
   return out;
@@ -136,6 +145,8 @@ export function digitSlot(
 ): { digit: number; mod: BarModifier; side?: 'left' | 'right' } | null {
   const match = /^Digit(\d)$/.exec(code);
   if (!match) return null;
+  // AltGr + digit is a different combination, never the plain digit.
+  if (flags.altGraph) return null;
   const others = [...held].filter((c) => c !== code);
   if (others.some((c) => !isModifierCode(c))) return null;
   const mods = modifiersFromFlags(flags);

@@ -19,7 +19,7 @@ Status: **planning** — nothing is built yet.
 | Storage | YAML files in a folder the user picks (File System Access API), plus a browser-storage mirror as backup; import/export as fallback |
 | YAML library | `js-yaml` |
 | Tests | Vitest for timing, matching, scoring and statistics logic |
-| Keyboard layout | US; keys are stored as physical key codes (`KeyboardEvent.code`) |
+| Keyboard layout | US-International on Windows (Right Alt = AltGr); keys are stored as physical key codes (`KeyboardEvent.code`) |
 | Hosting | GitHub Pages from `dalruby/keybind.trainer` (optional; also runs locally) |
 | Out of scope (for now) | WASD/joystick training, gamepad mode, non-US layouts, recommendations |
 
@@ -31,12 +31,16 @@ Chromium fullscreen Keyboard Lock API covers them, and a Tauri wrapper is the
 last resort. All keyboard input goes through one module (`src/input/`) so that
 swap stays contained.
 
-### To verify on Windows first (milestone 1)
-1. `Ctrl+1`…`Ctrl+9` normally switch browser tabs, so check that `preventDefault()` stops it.
-2. Pressing and releasing `Alt` alone can move focus to the browser menu, so check that suppressing it on keyup stops it.
-3. Event timestamps are consistent and the Azeron keys show up with the expected `code` values.
+### Verified on Windows (milestone 1, Edge 157 + Azeron Cyborg 2)
+1. `Ctrl+1`…`Ctrl+9` stay on the tab: `preventDefault()` stops tab switching. ✅
+2. Tapping `Alt` alone keeps focus. ✅
+3. All 40 WoW bar combinations (0–9 × none/Ctrl/Shift/Alt) reach the page; timestamps have 0.1 ms resolution. ✅
 
-If 1 or 2 fails, training runs in fullscreen with Keyboard Lock.
+So training works in a normal tab; fullscreen + Keyboard Lock stays an option, not a requirement.
+
+Findings that shaped the input rules in section 4:
+- The Windows layout is US-International, so Right Alt is **AltGr**: Windows sends a fake `ControlLeft` with it, and the browser reports Ctrl and Alt as *up* while AltGr is down. Right Alt is not usable as a regular Alt on this layout (switching Windows to the plain "US" layout would change that).
+- The Azeron produced a **switch bounce**: a key released and pressed again 0.3 ms later.
 
 ---
 
@@ -137,6 +141,8 @@ attempts:                    # one compact line per attempt
   - the trigger pressed before the modifier.
   - Pressing a modifier on its own is not a miss.
 - Auto-repeat events (`event.repeat`) are ignored.
+- **Bounce**: a keydown of a key that was released less than 10 ms earlier is hardware bounce, not a press. It and its matching keyup are dropped, so a bouncing key counts as one press, timed at its first keydown. Dropped bounces are counted per session, since frequent bounce on one key may be worth knowing.
+- **AltGr**: modifier state comes from the event flags, plus the browser's `AltGraph` state. While AltGr is down, `ControlLeft` and `AltRight` count as held even though the Ctrl/Alt flags say otherwise. AltGr + key never matches a binding without AltGr, so it counts as a misclick.
 - **Timing**: `rt = event.timeStamp - promptShownAt`. `promptShownAt` is taken from the first animation frame after the prompt renders.
 - After a correct input, the next prompt appears after a short configurable gap (default 250 ms). Keys still held from the previous binding are ignored until they're released.
 - **Order**: random, with no binding twice in a row.

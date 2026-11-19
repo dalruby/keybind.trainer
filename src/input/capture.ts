@@ -2,6 +2,7 @@
 // consumes CapturedKeyEvent, so this module can be swapped (e.g. for a Tauri
 // native hook) without changing the rest.
 
+import { Debouncer } from './debounce';
 import { reconcileHeld, type ModifierFlags } from './keys';
 
 export interface CapturedKeyEvent {
@@ -20,6 +21,7 @@ export interface CapturedKeyEvent {
 
 export type CaptureListener = (ev: CapturedKeyEvent) => void;
 export type ResetListener = (reason: 'blur' | 'hidden') => void;
+export type BounceListener = (code: string, type: 'down' | 'up', timeStamp: number) => void;
 
 /** Keys we never suppress, so the developer tools and reload keep working. */
 const PASSTHROUGH = new Set(['F5', 'F11', 'F12']);
@@ -28,7 +30,15 @@ export class KeyboardCapture {
   private held = new Set<string>();
   private listeners = new Set<CaptureListener>();
   private resetListeners = new Set<ResetListener>();
+  private bounceListeners = new Set<BounceListener>();
+  private debouncer = new Debouncer();
   private running = false;
+
+  /** Fires for each keydown/keyup dropped as switch bounce. */
+  onBounce(fn: BounceListener): () => void {
+    this.bounceListeners.add(fn);
+    return () => this.bounceListeners.delete(fn);
+  }
 
   onKey(fn: CaptureListener): () => void {
     this.listeners.add(fn);
@@ -59,6 +69,7 @@ export class KeyboardCapture {
     window.removeEventListener('blur', this.handleBlur);
     document.removeEventListener('visibilitychange', this.handleVisibility);
     this.held.clear();
+    this.debouncer.reset();
   }
 
   private handleKey = (e: KeyboardEvent): void => {
@@ -72,8 +83,13 @@ export class KeyboardCapture {
       shift: e.shiftKey,
       alt: e.altKey,
       meta: e.metaKey,
+      altGraph: e.getModifierState('AltGraph'),
     };
     const type = e.type === 'keydown' ? 'down' : 'up';
+    if (this.debouncer.filter(type, e.code, e.repeat, e.timeStamp)) {
+      for (const fn of this.bounceListeners) fn(e.code, type, e.timeStamp);
+      return;
+    }
     if (type === 'down') this.held.add(e.code);
     else this.held.delete(e.code);
     // On keyup of a modifier its own flag is already false; on keydown it is true.
@@ -95,12 +111,14 @@ export class KeyboardCapture {
 
   private handleBlur = (): void => {
     this.held.clear();
+    this.debouncer.reset();
     for (const fn of this.resetListeners) fn('blur');
   };
 
   private handleVisibility = (): void => {
     if (document.visibilityState === 'hidden') {
       this.held.clear();
+      this.debouncer.reset();
       for (const fn of this.resetListeners) fn('hidden');
     }
   };

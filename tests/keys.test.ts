@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { codeLabel, comboLabel, digitSlot, modifiersHeld, reconcileHeld, sideOf } from '../src/input/keys';
 
-const noFlags = { ctrl: false, shift: false, alt: false, meta: false };
+const noFlags = { ctrl: false, shift: false, alt: false, meta: false, altGraph: false };
 
 describe('codeLabel / comboLabel', () => {
   it('labels common codes', () => {
@@ -32,6 +32,10 @@ describe('reconcileHeld', () => {
     const held = new Set(['ControlLeft', 'Digit1']);
     expect([...reconcileHeld(held, noFlags)]).toEqual(['Digit1']);
   });
+  it('keeps the AltGr keys held while AltGr is down (ctrl/alt flags are false then)', () => {
+    const held = new Set(['ControlLeft', 'AltRight', 'Digit1']);
+    expect([...reconcileHeld(held, { ...noFlags, altGraph: true })].sort()).toEqual(['AltRight', 'ControlLeft', 'Digit1']);
+  });
   it('keeps modifiers that are still down', () => {
     const held = new Set(['AltLeft', 'Digit3']);
     expect([...reconcileHeld(held, { ...noFlags, alt: true })].sort()).toEqual(['AltLeft', 'Digit3']);
@@ -56,6 +60,9 @@ describe('digitSlot', () => {
       mod: 'Shift',
       side: undefined,
     });
+  });
+  it('never treats AltGr + digit as the plain digit', () => {
+    expect(digitSlot('Digit1', ['ControlLeft', 'AltRight', 'Digit1'], { ...noFlags, altGraph: true })).toBeNull();
   });
   it('rejects multiple modifiers, Win, other keys and non-digits', () => {
     expect(digitSlot('Digit1', ['ControlLeft', 'ShiftLeft', 'Digit1'], { ...ctrl, shift: true })).toBeNull();

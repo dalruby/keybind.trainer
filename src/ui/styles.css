@@ -166,3 +166,4 @@ th { text-align: left; font-weight: 600; color: var(--muted); font-size: 0.85rem
 .log tr.repeat td { color: var(--muted); }
 .log .num { text-align: right; font-variant-numeric: tabular-nums; }
 .log .empty { text-align: center; padding: 24px; }
+.altgr { margin-left: 8px; }
